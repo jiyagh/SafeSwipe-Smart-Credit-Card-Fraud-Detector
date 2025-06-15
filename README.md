@@ -79,7 +79,7 @@ pip install flask tensorflow scikit-learn numpy joblib
 ### Step 4: Verify Model Files
 Ensure these files are in your project directory:
 - `fraud_model.h5` (LSTM model)
-- `scaler.joblib` (Data scaler)
+- `scaler.pkl` (Data scaler)
 
 ### Step 5: Run the Application
 ```bash
@@ -116,13 +116,8 @@ http://localhost:5000
 SafeSwipe/
 ├── app.py                 # Main Flask application
 ├── fraud_model.h5         # Trained LSTM model
-├── scaler.joblib          # Data preprocessing scaler
+├── scaler.pkl          # Data preprocessing scaler
 ├── requirements.txt       # Python dependencies
-├── static/
-│   ├── css/
-│   │   └── style.css     # Styling
-│   └── js/
-│       └── script.js     # Frontend logic
 ├── templates/
 │   ├── index.html        # Main interface
 │   └── result.html       # Results page
