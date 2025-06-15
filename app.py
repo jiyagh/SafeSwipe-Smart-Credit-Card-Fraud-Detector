@@ -1,34 +1,105 @@
-import streamlit as st
-import numpy as np
+# app.py
+from flask import Flask, request, jsonify, render_template
 import joblib
-import tensorflow as tf
+import numpy as np
+from tensorflow.keras.models import load_model
 
-# Load model and scaler
-model = tf.keras.models.load_model("fraud_model.h5")
-scaler = joblib.load("scaler.pkl")
+app = Flask(__name__)
 
-st.title("💳 Credit Card Fraud Detection (CNN + LSTM)")
-st.markdown("Enter transaction details to predict fraud:")
+# Load models
+model = load_model('fraud_model.h5')
+scaler = joblib.load('scaler.pkl')
 
-# Define inputs (match the final features you used)
-v1 = st.number_input("V1", -30.0, 30.0, 0.0)
-v2 = st.number_input("V2", -30.0, 30.0, 0.0)
-v3 = st.number_input("V3", -30.0, 30.0, 0.0)
-v4 = st.number_input("V4", -30.0, 30.0, 0.0)
-v5 = st.number_input("V5", -30.0, 30.0, 0.0)
-amount = st.number_input("Amount", 0.0, 10000.0, 100.0)
+def convert_simple_to_features(data):
+    """Convert user-friendly inputs to ML features"""
+    # Create mapping logic
+    features = np.zeros(30)  # Assuming 30 features total
+    
+    # Amount (last feature)
+    features[-1] = data['amount']
+    
+    # Time simulation (convert time_of_day to seconds)
+    time_mapping = {
+        'morning': 28800,    # 8 AM
+        'afternoon': 43200,  # 12 PM  
+        'evening': 64800,    # 6 PM
+        'night': 79200       # 10 PM
+    }
+    features[0] = time_mapping.get(data['time_of_day'], 43200)
+    
+    # Risk factors simulation for PCA components
+    risk_multiplier = 1.0
+    
+    if data['location'] == 'international':
+        risk_multiplier += 0.5
+    if data['merchant'] == 'unknown':
+        risk_multiplier += 0.3
+    if data['amount'] > 50000:
+        risk_multiplier += 0.4
+        
+    # Simulate PCA components based on risk
+    for i in range(1, 29):  # V1 to V28
+        features[i] = np.random.normal(0, risk_multiplier)
+    
+    return features.reshape(1, -1)
 
-# Collect and scale input
-input_data = np.array([[v1, v2, v3, v4, v5, amount]])
-input_scaled = scaler.transform(input_data)
-input_reshaped = input_scaled.reshape((input_scaled.shape[0], input_scaled.shape[1], 1))
+@app.route('/')
+def home():
+    return render_template('index.html')  # Your HTML file
 
-# Predict
-if st.button("Check Transaction"):
-    prediction = model.predict(input_reshaped)
-    predicted_label = (prediction > 0.5).astype("int32")[0][0]
+@app.route('/predict_simple', methods=['POST'])
+def predict_simple():
+    try:
+        data = request.json
+        features = convert_simple_to_features(data)
+        
+        # Scale and predict
+        features_scaled = scaler.transform(features)
+        features_reshaped = features_scaled.reshape(1, -1, 1)
+        prediction = model.predict(features_reshaped)[0][0]
+        
+        return jsonify({
+            'probability': float(prediction),
+            'is_fraud': bool(prediction > 0.5),
+            'risk_factors': analyze_risk_factors(data)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
-    if predicted_label == 1:
-        st.error("🚨 Fraudulent Transaction Detected!")
-    else:
-        st.success("✅ This transaction seems Safe.")
+@app.route('/predict_advanced', methods=['POST'])
+def predict_advanced():
+    try:
+        data = request.json
+        features = np.array([[
+            data['adv_time'], data['v1'], data['v2'], data['v3'], 
+            data['v4'], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, data['adv_amount']
+        ]])
+        
+        features_scaled = scaler.transform(features)
+        features_reshaped = features_scaled.reshape(1, -1, 1)
+        prediction = model.predict(features_reshaped)[0][0]
+        
+        return jsonify({
+            'probability': float(prediction),
+            'is_fraud': bool(prediction > 0.5)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+def analyze_risk_factors(data):
+    """Analyze what made transaction risky"""
+    factors = []
+    
+    if data['amount'] > 50000:
+        factors.append("High transaction amount")
+    if data['location'] == 'international':
+        factors.append("International transaction") 
+    if data['time_of_day'] == 'night':
+        factors.append("Unusual time (night)")
+    if data['merchant'] == 'unknown':
+        factors.append("Unknown merchant type")
+        
+    return factors
+
+if __name__ == '__main__':
+    app.run(debug=True)
