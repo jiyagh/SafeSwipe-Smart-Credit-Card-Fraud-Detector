@@ -7,7 +7,7 @@
 
 SafeSwipe is an intelligent AI-powered credit card fraud detection system that helps identify potentially fraudulent transactions in real-time. Built with advanced CNN+LSTM neural networks, it provides accurate fraud predictions with detailed risk assessments.
 
-##Download and watch the video demo by clicking the thumbnail below
+## Download and watch the video demo by clicking the thumbnail below
 
 [![Watch the video](https://raw.githubusercontent.com/jiyagh/SafeSwipe-Smart-Credit-Card-Fraud-Detector/main/thumbnail.png)](https://raw.githubusercontent.com/jiyagh/SafeSwipe-Smart-Credit-Card-Fraud-Detector/main/Safeswipe.mp4)
 
